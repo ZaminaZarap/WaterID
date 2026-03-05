@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>WaterID — Groundwater Deposits</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geologica:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0a1628;
+    --surface: #0f2040;
+    --surface2: #162d55;
+    --accent: #00b4d8;
+    --accent2: #48cae4;
+    --accent3: #0077b6;
+    --text: #e8f4f8;
+    --text2: #8db4cc;
+    --good: #06d6a0;
+    --warn: #ffd166;
+    --danger: #ef476f;
+    --border: rgba(0,180,216,0.2);
+    --radius: 12px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Geologica', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #0a1628 0%, #0f2040 100%);
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .logo {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .header h1 {
+    font-size: 20px; font-weight: 700;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .header p {
+    font-size: 11px; color: var(--text2); letter-spacing: 0.5px;
+  }
+
+  /* REGION SELECTOR */
+  .region-selector {
+    padding: 16px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .region-label {
+    font-size: 11px; color: var(--text2);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-family: 'Geologica', sans-serif;
+    font-size: 14px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2300b4d8' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    cursor: pointer;
+  }
+  select:focus { outline: none; border-color: var(--accent); }
+
+  /* DEPOSIT CARDS */
+  .deposits-section {
+    padding: 16px 20px;
+  }
+  .section-label {
+    font-size: 11px; color: var(--text2);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  .deposit-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .deposit-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .deposit-card::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--accent);
+    border-radius: 3px 0 0 3px;
+  }
+  .deposit-card.mineral::before { background: var(--warn); }
+  .deposit-card.ptv::before { background: var(--good); }
+  .deposit-card:hover { background: var(--surface2); border-color: var(--accent); }
+  .deposit-card.active { background: var(--surface2); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .deposit-name {
+    font-size: 14px; font-weight: 600;
+    line-height: 1.3;
+    flex: 1;
+  }
+  .water-type {
+    font-size: 10px; font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 20px;
+    margin-left: 8px;
+    white-space: nowrap;
+  }
+  .type-xpv { background: rgba(0,180,216,0.15); color: var(--accent); border: 1px solid rgba(0,180,216,0.3); }
+  .type-ptv { background: rgba(6,214,160,0.15); color: var(--good); border: 1px solid rgba(6,214,160,0.3); }
+  .type-min { background: rgba(255,209,102,0.15); color: var(--warn); border: 1px solid rgba(255,209,102,0.3); }
+
+  .card-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .stat {
+    background: rgba(255,255,255,0.04);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .stat-label {
+    font-size: 10px; color: var(--text2);
+    margin-bottom: 3px;
+  }
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; font-weight: 500;
+    color: var(--accent2);
+  }
+  .stat-unit {
+    font-size: 9px; color: var(--text2);
+  }
+
+  /* REGION INFO CARD */
+  .region-info-card {
+    margin: 0 20px 16px;
+    background: linear-gradient(135deg, rgba(0,119,182,0.15), rgba(0,180,216,0.08));
+    border: 1px solid rgba(0,180,216,0.25);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .region-info-title {
+    font-size: 11px; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .region-info-text {
+    font-size: 13px; color: var(--text2);
+    line-height: 1.6;
+  }
+  .problem-tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin: 3px 2px;
+    background: rgba(239,71,111,0.15);
+    color: var(--danger);
+    border: 1px solid rgba(239,71,111,0.25);
+  }
+  .problem-tag.warn {
+    background: rgba(255,209,102,0.15);
+    color: var(--warn);
+    border-color: rgba(255,209,102,0.25);
+  }
+
+  /* AI CHAT */
+  .ai-section {
+    padding: 0 20px 20px;
+  }
+  .ai-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .ai-header {
+    padding: 12px 16px;
+    background: rgba(0,180,216,0.08);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 600;
+  }
+  .ai-dot {
+    width: 8px; height: 8px;
+    background: var(--good);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .chat-messages {
+    padding: 14px 16px;
+    min-height: 120px;
+    max-height: 280px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .msg {
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 13px; line-height: 1.5;
+    max-width: 90%;
+  }
+  .msg-ai {
+    background: rgba(0,180,216,0.1);
+    border: 1px solid rgba(0,180,216,0.15);
+    align-self: flex-start;
+  }
+  .msg-user {
+    background: rgba(255,255,255,0.07);
+    align-self: flex-end;
+    color: var(--text2);
+  }
+  .msg-loading {
+    display: flex; align-items: center; gap: 6px;
+    color: var(--text2); font-size: 12px;
+  }
+  .dot-flash span {
+    display: inline-block;
+    width: 5px; height: 5px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: dotFlash 1.2s infinite;
+  }
+  .dot-flash span:nth-child(2) { animation-delay: 0.2s; }
+  .dot-flash span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dotFlash {
+    0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+    40% { transform: scale(1.2); opacity: 1; }
+  }
+
+  .quick-questions {
+    padding: 10px 16px;
+    display: flex; flex-wrap: wrap; gap: 6px;
+    border-top: 1px solid var(--border);
+  }
+  .quick-btn {
+    font-size: 11px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Geologica', sans-serif;
+  }
+  .quick-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,180,216,0.08);
+  }
+
+  .chat-input-area {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 8px;
+  }
+  .chat-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'Geologica', sans-serif;
+  }
+  .chat-input:focus { outline: none; border-color: var(--accent); }
+  .chat-input::placeholder { color: var(--text2); }
+  .send-btn {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent3), var(--accent));
+    border: none; border-radius: 8px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+  }
+  .send-btn:hover { opacity: 0.85; }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    padding: 0 20px;
+    margin-bottom: 16px;
+    gap: 4px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 9px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: 'Geologica', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab-btn.active {
+    background: rgba(0,180,216,0.12);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* STATS BAR */
+  .stats-bar {
+    padding: 12px 20px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .stats-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+  }
+  .stats-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px; font-weight: 700;
+    color: var(--accent);
+  }
+  .stats-lbl {
+    font-size: 9px; color: var(--text2);
+    margin-top: 2px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--accent3); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="logo">💧</div>
+    <div>
+      <h1>WaterID</h1>
+      <p>Groundwater of Kazakhstan</p>
+    </div>
+  </div>
+</div>
+
+<!-- REGION SELECTOR -->
+<div class="region-selector">
+  <div class="region-label">Select region</div>
+  <select id="regionSelect" onchange="loadRegion()">
+    <option value="">— Select region —</option>
+    <option value="akmola">Akmola Region</option>
+    <option value="aktobe">Aktobe Region</option>
+    <option value="almaty">Almaty Region</option>
+    <option value="atyrau">Atyrau Region</option>
+    <option value="vko">East Kazakhstan Region</option>
+    <option value="zhambyl">Zhambyl Region</option>
+    <option value="zko">West Kazakhstan Region</option>
+    <option value="karaganda">Karaganda Region</option>
+    <option value="kostanay">Kostanay Region</option>
+    <option value="kyzylorda">Kyzylorda Region</option>
+    <option value="mangystau">Mangystau Region</option>
+    <option value="pavlodar">Pavlodar Region</option>
+    <option value="sko">North Kazakhstan Region</option>
+    <option value="yuko">South Kazakhstan Region</option>
+  </select>
+</div>
+
+<div id="mainContent" style="display:none">
+  <!-- STATS BAR -->
+  <div class="stats-bar" id="statsBar"></div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('deposits')">📋 Deposits</button>
+    <button class="tab-btn" onclick="showTab('ai')">🤖 AI Assistant</button>
+  </div>
+
+  <!-- TAB: DEPOSITS -->
+  <div class="tab-content active" id="tab-deposits">
+    <div class="region-info-card" id="regionInfoCard"></div>
+    <div class="deposits-section">
+      <div class="section-label">Explored deposits</div>
+      <div class="deposit-grid" id="depositGrid"></div>
+    </div>
+  </div>
+
+  <!-- TAB: AI -->
+  <div class="tab-content" id="tab-ai">
+    <div class="ai-section">
+      <div class="ai-card">
+        <div class="ai-header">
+          <div class="ai-dot"></div>
+          <span>AI Water Resources Consultant</span>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+          <div class="msg msg-ai" id="welcomeMsg">
+            Select a region and ask about its groundwater. I can help with water quality, deposits, and supply issues.
+          </div>
+        </div>
+        <div class="quick-questions">
+          <button class="quick-btn" onclick="askQuick('Can I drill a well here?')">🔍 Can I drill a well?</button>
+          <button class="quick-btn" onclick="askQuick('What is the water quality in this region?')">💧 Water quality?</button>
+          <button class="quick-btn" onclick="askQuick('Is there groundwater contamination?')">⚠️ Contamination?</button>
+          <button class="quick-btn" onclick="askQuick('What are the main water supply problems?')">🚰 Supply problems?</button>
+        </div>
+        <div class="chat-input-area">
+          <input class="chat-input" id="chatInput" type="text" placeholder="Ask a question..." onkeypress="if(event.key==='Enter')sendMsg()">
+          <button class="send-btn" id="sendBtn" onclick="sendMsg()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="emptyState" style="padding:60px 20px; text-align:center; color:var(--text2);">
+  <div style="font-size:40px; margin-bottom:16px;">🗺️</div>
+  <div style="font-size:16px; font-weight:600; color:var(--text); margin-bottom:8px">Select a region</div>
+  <div style="font-size:13px; line-height:1.6;">Select an administrative region of Kazakhstan to view groundwater deposit data</div>
+</div>
+
+<script>
+const REGIONS = {
+  akmola: {
+    name: "Akmola Region",
+    population: "1,155.6 th. people",
+    resources: "3,576 th. m³/day",
+    deposits_count: 39,
+    problems: ["Acute water deficit", "Uneven distribution", "Industrial contamination"],
+    pollution: ["NH4 up to 2 MAC", "Mn up to 40 MAC", "Fe up to 23 MAC", "Beryllium up to 19 MAC near CHP-1"],
+    context: `Akmola Region is one of the most challenging areas for water supply. Acute drinking water deficit. Fresh groundwater is found only in the northwest and southeast. In the central part (Teniz-Kurgaldzhin district) there is no fresh groundwater at all. 39 deposits explored with total reserves of 349.88 th. m³/day. Industrial contamination: near CHP-1 and CHP-2 in Astana, beryllium reaches 19 MAC. About 20 water intakes use contaminated water.`,
+    deposits: [
+      { name: "Astrakhanskoe", type: "DWS", reserves: 50.1, extraction: 0.6 },
+      { name: "Atbasar-Prishimskoe", type: "DWS", reserves: 26.4, extraction: 1.8 },
+      { name: "Atbasarskoe", type: "DWS", reserves: 21.2, extraction: 6.6 },
+      { name: "Zhabayskoe", type: "DWS", reserves: 16.6, extraction: null },
+      { name: "Zhaksy-Kiiminskoe", type: "DWS", reserves: 8.6, extraction: 0.5 },
+      { name: "Kyzylsuiskoe", type: "DWS", reserves: 14.3, extraction: 3.5 },
+      { name: "Nurinskoe", type: "DWS", reserves: 27.3, extraction: 9.9 },
+      { name: "Rozhdestvenskoe", type: "DWS", reserves: 36.2, extraction: 0.6 },
+      { name: "Tselinogradskoe", type: "DWS", reserves: 6.8, extraction: null },
+      { name: "Chaglinskoe-1", type: "DWS", reserves: 7.8, extraction: 5.0 },
+      { name: "Chaglinskoe-2", type: "DWS", reserves: 17.3, extraction: 5.5 },
+      { name: "Kainarly II", type: "MIN", reserves: 0.026, extraction: null },
+      { name: "Kulager-Arasan", type: "MIN", reserves: 0.043, extraction: null },
+      { name: "Maybalykskoe", type: "MIN", reserves: 0.043, extraction: null },
+    ]
+  },
+  aktobe: {
+    name: "Aktobe Region",
+    population: "682.6 th. people",
+    resources: "13,257 th. m³/day",
+    deposits_count: 121,
+    problems: ["Boron contamination (chrome plant)", "Uneven distribution", "Salinization in Baiganin district"],
+    pollution: ["Boron >100 MAC", "Hexavalent chromium", "Nitrates 1-2 MAC", "Petroleum products"],
+    context: `Aktobe Region faces acute deficit of both ground and surface water. 121 deposits explored. Main problem — boron contamination from the Aktobe chrome compounds plant: boron in groundwater reaches 100 MAC. Contamination zone in Aktobe city extends 15 km. Water intakes in Aktobe contaminated with boron and wastewater. Northern districts (Martuk, Khromtau) are relatively well-supplied. In Baiganin district, weakly saline water prevails with mineralization 1.5–5 g/L.`,
+    deposits: [
+      { name: "Aktobinskoe (Aktobe city)", type: "DWS", reserves: 325.6, extraction: 113.3 },
+      { name: "Sarybulak Group", type: "DWS", reserves: 238.2, extraction: null },
+      { name: "Bolshie Barsuki", type: "DWS", reserves: 8.4, extraction: 4.4 },
+      { name: "Alginskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Embinskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Kandagashskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Temirskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Donskoe", type: "DWS", reserves: 18.6, extraction: null },
+      { name: "Kayraktinskoe", type: "DWS", reserves: 11.2, extraction: null },
+      { name: "Ayrkyzyls koe", type: "DWS", reserves: 10.3, extraction: null },
+    ]
+  },
+  almaty: {
+    name: "Almaty Region",
+    population: "2,687.9 th. people",
+    resources: "49,845 th. m³/day",
+    deposits_count: 52,
+    problems: ["Petroleum product contamination", "Declining groundwater levels", "Nitrate contamination"],
+    pollution: ["Nitrates up to 6 MAC", "Manganese up to 14 MAC", "Petroleum products", "Mercury 1-2 MAC"],
+    context: `Almaty Region is one of the best-supplied with surface water. Fresh groundwater is widespread across almost the entire territory. 52 deposits explored, reserves 17,039 th. m³/day. Main problem in Almaty city — declining groundwater levels and contamination of the upper hydrodynamic zone with petroleum products, nitrates, manganese, mercury. Recommended to use water from depths of 150–500 m. Lake Balkhash is degrading — eastern part mineralization 5.4–7.8 g/L.`,
+    deposits: [
+      { name: "Almatinskoe", type: "DWS", reserves: 1246.2, extraction: 320.29 },
+      { name: "Talgarskoe", type: "DWS", reserves: 504.5, extraction: 358.04 },
+      { name: "Gorny Gigant", type: "DWS", reserves: 21.6, extraction: null },
+      { name: "Kargalinskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Aksayskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Akksuiskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Pokrovskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Burundayskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Panfilovskoe", type: "DWS", reserves: 43.7, extraction: 6.3 },
+      { name: "Aksuskoe", type: "DWS", reserves: 1554.6, extraction: 0.8 },
+      { name: "Ushtobinskoe", type: "DWS", reserves: 86.4, extraction: 6.4 },
+      { name: "Alakolskoe", type: "DWS", reserves: 1901.5, extraction: 2.3 },
+    ]
+  },
+  atyrau: {
+    name: "Atyrau Region",
+    population: "440.3 th. people",
+    resources: "5,236 th. m³/day",
+    deposits_count: 10,
+    problems: ["Acute fresh water deficit", "Oil field contamination (31.6 MAC)", "No explored reserves for Atyrau city"],
+    pollution: ["Petroleum 31.6 MAC", "Phenols 60 MAC", "Bromine 66 MAC", "Hydrogen sulfide hundreds of MAC"],
+    context: `Atyrau Region faces the most acute deficit in Kazakhstan. Fresh groundwater is practically absent. Water supply of Atyrau city fully depends on surface water from the Ural River. Oil field contamination is extremely high: petroleum products 31.6 MAC at evaporation fields of the oil refinery, phenols 60 MAC. Zone of elevated hydrogen sulfide in groundwater — from Tengiz to Kulsary (hundreds of MAC). About 35% of groundwater for drinking purposes is in contamination zones.`,
+    deposits: [
+      { name: "Koyandinskoe", type: "DWS", reserves: 7.2, extraction: null },
+      { name: "Miyaly", type: "DWS", reserves: 2.7, extraction: null },
+      { name: "Taisoghanskoe", type: "DWS", reserves: 30.27, extraction: null },
+      { name: "Taisoghanskoe South", type: "DWS", reserves: null, extraction: null },
+      { name: "Taisoghanskoe West", type: "DWS", reserves: null, extraction: null },
+      { name: "Keregen-Sagizskoe", type: "DWS", reserves: 9.3, extraction: null },
+      { name: "Western", type: "DWS", reserves: 19.2, extraction: null },
+      { name: "Eastern", type: "DWS", reserves: null, extraction: null },
+    ]
+  },
+  vko: {
+    name: "East Kazakhstan Region",
+    population: "1,531 th. people",
+    resources: "17,420 th. m³/day",
+    deposits_count: 59,
+    problems: ["Heavy metal contamination", "Mining industry impact", "Resource depletion in mountain areas"],
+    pollution: ["Lead up to 41 MAC", "Manganese up to 44 MAC", "Cadmium up to 3.5 MAC", "Ammonia up to 6 MAC"],
+    context: `East Kazakhstan Region is a major mining center. Groundwater reserves 6,500 th. m³/day. Favorable hydrogeological conditions — most major cities are supplied with groundwater. Main problem — heavy metal contamination from mining industry. At Leninogorsk water intake: lead up to 41 MAC, manganese up to 44 MAC. At Shemonaikha water intake: lead 15.3 MAC. About 10% of extracted groundwater is contaminated.`,
+    deposits: [
+      { name: "Leninogorskoe", type: "DWS", reserves: 121.4, extraction: 42.8 },
+      { name: "Grekhovskoe", type: "DWS", reserves: 27.6, extraction: 4.5 },
+      { name: "Bogatyrevskoe", type: "DWS", reserves: 169.6, extraction: 41.8 },
+      { name: "Glukhovskoe", type: "DWS", reserves: 276.6, extraction: null },
+      { name: "Zaisanskoe", type: "DWS", reserves: 62.2, extraction: 2.1 },
+      { name: "Kamyshinskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Nizhesogrinskoye", type: "DWS", reserves: null, extraction: null },
+      { name: "Ayaguzskoe", type: "DWS", reserves: 25.9, extraction: 3.3 },
+      { name: "Sharskoe", type: "DWS", reserves: 11.7, extraction: 1.9 },
+      { name: "Balapanovskoe", type: "DWS", reserves: null, extraction: null },
+    ]
+  },
+  zhambyl: {
+    name: "Zhambyl Region",
+    population: "988.8 th. people",
+    resources: "22,559 th. m³/day",
+    deposits_count: 39,
+    problems: ["Phosphorus & fluorine contamination", "Phosphate industry impact", "Poor water supply in northern districts"],
+    pollution: ["Fluorine 1-4 MAC", "Phosphorus 5-12 MAC", "Nitrates 1.3-1.5 MAC", "Chromium 2-6 MAC"],
+    context: `Zhambyl Region has no general deficit, but northern districts are critically under-supplied. Main ecological problem — phosphate industry near Taraz. Novozhambyls phosphate plant, Zhambyl superphosphate plant, and Khimprom contaminate groundwater with fluorine and phosphorus. Contamination plume — 30×15 km. Fluorine content 1-4 MAC, phosphorus 5-12 MAC. Naturally elevated fluorine content is characteristic for the region.`,
+    deposits: [
+      { name: "Talas-Assinskoe", type: "DWS", reserves: 320.1, extraction: 108.1 },
+      { name: "Dzhuvalinskoe", type: "DWS", reserves: 17.2, extraction: null },
+      { name: "Berkutinskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Zhylybulakskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Kopbulakskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Shabaktinskoe", type: "DWS", reserves: 123.2, extraction: 3.1 },
+      { name: "Tamdinskoe", type: "DWS", reserves: 41.9, extraction: null },
+      { name: "Maytobinskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "South Kopinskoe", type: "DWS", reserves: 17.3, extraction: 2.5 },
+      { name: "Merkenskoe", type: "DWS", reserves: 1040, extraction: null },
+    ]
+  },
+  zko: {
+    name: "West Kazakhstan Region",
+    population: "616.8 th. people",
+    resources: "2,927 th. m³/day",
+    deposits_count: 25,
+    problems: ["Unfavorable hydrogeological conditions", "Saline water in southern areas", "Over half of wells non-functional"],
+    pollution: ["Petroleum products", "Phenols", "Nitrites", "Manganese"],
+    context: `West Kazakhstan Region has unfavorable natural-hydrogeological conditions. Fresh groundwater is concentrated in the north and northeast. Southern and western areas are dominated by saline water. Uralsk city water supply depends on the Ural River — explored groundwater reserves are insufficient for the city. More than half of wells (over 1,000) are non-functional. 25 deposits explored, reserves 367 th. m³/day, 92% — fresh water with mineralization below 1 g/L.`,
+    deposits: [
+      { name: "Uralskoe", type: "DWS", reserves: 65.6, extraction: null },
+      { name: "Serebryakovskoe", type: "DWS", reserves: 163.3, extraction: null },
+      { name: "Yanvartsevskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Zharsuatskoe", type: "DWS", reserves: 25.2, extraction: null },
+      { name: "Akzhaikskoe", type: "DWS", reserves: 8.7, extraction: 5.5 },
+      { name: "Karatobinskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Lyusinskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Fedorovskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Dzhambeytinskoe", type: "DWS", reserves: null, extraction: null },
+    ]
+  },
+  karaganda: {
+    name: "Karaganda Region",
+    population: "1,410.2 th. people",
+    resources: "12,970 th. m³/day",
+    deposits_count: 107,
+    problems: ["Nura River mercury contamination", "Heavy industrial pollution", "Low use of explored reserves"],
+    pollution: ["Mercury hundreds of MAC (Nura R.)", "Nitrates up to 20 MAC", "Bromine 1-6 MAC", "Beryllium up to 4 MAC"],
+    context: `Karaganda Region is the largest industrial center. 107 deposits explored, reserves 3,166 th. m³/day. Irtish-Karaganda canal is the main water supply source. Main ecological disaster — Nura River mercury contamination from the Karaganda-Temirtau metallurgical plant: mercury levels are hundreds of times above background. Many deposits are contaminated: Verkhniy Byef (beryllium up to 4 MAC), Nizhniy Byef (nitrates 20 MAC). Total of 77 contaminated water intakes.`,
+    deposits: [
+      { name: "Upper Byef", type: "DWS", reserves: 255.8, extraction: 55.2 },
+      { name: "Lower Byef", type: "DWS", reserves: null, extraction: null },
+      { name: "Toparskoe", type: "DWS", reserves: 21.9, extraction: null },
+      { name: "Saranskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Nizhnetokrauskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Aidosskoe", type: "DWS", reserves: 316.2, extraction: 30.0 },
+      { name: "Zhanayskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "West Eskulinskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Uytasskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Kagylskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Samarskoe", type: "DWS", reserves: 49.3, extraction: 2.8 },
+      { name: "Algabasskoe", type: "DWS", reserves: null, extraction: null },
+    ]
+  },
+  kostanay: {
+    name: "Kostanay Region",
+    population: "1,017.7 th. people",
+    resources: "4,776 th. m³/day",
+    deposits_count: 68,
+    problems: ["Acute deficit in drinking water sources", "Uneven distribution", "Iron and manganese contamination"],
+    pollution: ["Iron up to 41.6 MAC", "Manganese up to 10.2 MAC", "Nitrates 1.3-3.2 MAC", "Hardness 1.2-2.1 MAC"],
+    context: `Kostanay Region faces acute deficit in drinking water sources. 68 deposits explored. Current use of reserves — only 11% of explored (107 th. m³/day out of 935 th.). Favorable areas — northwest, central, southwest. Eastern districts have almost no fresh groundwater. Contamination at 27 deposits: iron up to 41.6 MAC. Mining enterprises are major consumers but use reserves minimally.`,
+    deposits: [
+      { name: "Abayskoe", type: "DWS", reserves: 57.3, extraction: null },
+      { name: "Kostanayskoe", type: "DWS", reserves: null, extraction: 24.8 },
+      { name: "Karaturgay Group", type: "DWS", reserves: 163.1, extraction: 12.9 },
+      { name: "Kaindinskoe", type: "DWS", reserves: 41.2, extraction: null },
+      { name: "Dzhetygaranskoe", type: "DWS", reserves: 8.3, extraction: 1.2 },
+      { name: "Ubagan", type: "DWS", reserves: 20.0, extraction: null },
+      { name: "Sadchikovskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Baikaynskoe", type: "DWS", reserves: null, extraction: null },
+    ]
+  },
+  kyzylorda: {
+    name: "Kyzylorda Region",
+    population: "596.2 th. people",
+    resources: "15,951 th. m³/day",
+    deposits_count: 25,
+    problems: ["Aral Sea ecological disaster", "Syr Darya River contamination", "Deficit of quality drinking water"],
+    pollution: ["Nitrates 12 MAC", "Ammonia 3.5 MAC", "Bromine 33 MAC", "Iron 4.6 MAC"],
+    context: `Kyzylorda Region is the Aral Sea ecological disaster zone. The Syr Darya River is unfit for drinking without complex treatment: mineralization 3 g/L, cholera vibrios, BOD 8.3 vs. norm 2-3 mg/L. 15-60 million tonnes of salt dust are blown from the dried seabed annually. Groundwater is the only reliable drinking water source. 25 deposits explored, reserves 1,435 th. m³/day. Only 9% of explored reserves are currently used.`,
+    deposits: [
+      { name: "Kyzylordinskoe", type: "DWS", reserves: 147.6, extraction: 10.0 },
+      { name: "Tolagayskoe", type: "DWS", reserves: 73.0, extraction: 4.5 },
+      { name: "Ainakolskoe", type: "DWS", reserves: 30.0, extraction: null },
+      { name: "Taznura", type: "DWS", reserves: 150.0, extraction: 30.4 },
+      { name: "Left Bank", type: "DWS", reserves: 159.0, extraction: null },
+      { name: "Toryngylsayskoe", type: "DWS", reserves: 86.4, extraction: null },
+      { name: "Zhosalinskoe", type: "DWS", reserves: 1.5, extraction: 0.55 },
+      { name: "Baikhozhinskoye", type: "DWS", reserves: 4.32, extraction: 2.0 },
+      { name: "Shiilinsko", type: "DWS", reserves: 12.96, extraction: 0.7 },
+      { name: "Shalki site", type: "DWS", reserves: 20.7, extraction: 0.7 },
+    ]
+  },
+  mangystau: {
+    name: "Mangystau Region",
+    population: "~320 th. people",
+    resources: "Limited",
+    deposits_count: 12,
+    problems: ["Extreme fresh water deficit", "Seawater desalination required", "Oil field contamination"],
+    pollution: ["Petroleum 10-15 MAC", "Fluorine 3-5 MAC", "Ammonia 2-4 MAC", "7 contamination hotspots"],
+    context: `Mangystau Region is one of Kazakhstan's most arid regions with an acute fresh water deficit. Aktau city is supplied mainly with desalinated water — a new seawater desalination plant with capacity 40 th. m³/day is under construction. Zhanaozen city faces acute deficit — future supply only possible via water transport from outside. 21 of 46 rural settlements have no groundwater, 10 rely on water delivery. 7 contamination hotspots from oil fields.`,
+    deposits: [
+      { name: "Kuyulusskoe", type: "DWS", reserves: null, extraction: 15.9 },
+      { name: "Tyuesayskoe", type: "DWS", reserves: 12.0, extraction: 6.4 },
+      { name: "Ketykskoe", type: "DWS", reserves: 0.7, extraction: 0.3 },
+      { name: "Saubetskoe", type: "DWS", reserves: 3.4, extraction: null },
+      { name: "Akmyshskoe", type: "DWS", reserves: 2.592, extraction: 0.03 },
+      { name: "Ulanak-Kuibyshevo", type: "DWS", reserves: 8.5, extraction: 1.59 },
+      { name: "Samskoe", type: "DWS", reserves: 35.5, extraction: 0.5 },
+      { name: "Sauskanskoe", type: "DWS", reserves: 11.9, extraction: 3.6 },
+      { name: "Kzyl-Kumskoe", type: "DWS", reserves: 5.7, extraction: null },
+      { name: "Baskudukskoe", type: "DWS", reserves: 4.27, extraction: null },
+    ]
+  },
+  pavlodar: {
+    name: "Pavlodar Region",
+    population: "807 th. people",
+    resources: "11,843 th. m³/day",
+    deposits_count: 11,
+    problems: ["Mercury contamination (Pavlodar city)", "Industrial emissions", "Low use of explored reserves"],
+    pollution: ["Mercury 7.4 MAC", "Fluorine up to 10 MAC", "Arsenic up to 2 MAC", "Ammonium up to 6 MAC"],
+    context: `Pavlodar Region is a major industrial area. Pavlodar and Aksu cities fully depend on Irtysh River surface water. Explored deposits are barely used. Main problem — mercury contamination in the northern industrial zone of Pavlodar: mercury 7.4 MAC. GRES-1 and GRES-2 in Ekibastuz created a contamination zone with fluorine up to 10.4 MAC, arsenic up to 2 MAC. Groundwater is a potentially vast resource (10,559 th. m³/day fresh), but only a small fraction is currently used.`,
+    deposits: [
+      { name: "Pavlodarskoe", type: "DWS", reserves: 229.0, extraction: null },
+      { name: "Kalkamanskoe", type: "DWS", reserves: 26.9, extraction: null },
+      { name: "Ermakovskoe", type: "DWS", reserves: 29.0, extraction: null },
+      { name: "Akmolinskoe (Akmol)", type: "DWS", reserves: null, extraction: null },
+      { name: "Mayskoe", type: "DWS", reserves: null, extraction: null },
+      { name: "Koktobinskoe", type: "DWS", reserves: null, extraction: null },
+    ]
+  },
+  sko: {
+    name: "North Kazakhstan Region",
+    population: "725.9 th. people",
+    resources: "2,799 th. m³/day",
+    deposits_count: 21,
+    problems: ["Fresh water only 12.5% of resources", "Supply dependent on Ishim River", "Water pipeline system collapsed"],
+    pollution: ["Mineralization 1.5-2.5 g/L in winter", "Nitrates", "Iron", "Hardness"],
+    context: `North Kazakhstan Region — fresh groundwater constitutes only 12.5% of total resources (351 th. m³/day out of 2,799). All major cities are supplied with surface water from the Ishim River. In winter, Ishim mineralization reaches 1.5–2.5 g/L — a problem for water supply. Centralized water supply systems were practically destroyed by 2000 due to equipment failures and insolvency. 21 deposits explored, reserves 162 th. m³/day, only 1.356 th. m³/day currently extracted.`,
+    deposits: [
+      { name: "Arykbalykskoe", type: "DWS", reserves: 7.3, extraction: 0.329 },
+      { name: "Esauletovskoe", type: "DWS", reserves: 4.4, extraction: null },
+      { name: "Leonidovskoe", type: "DWS", reserves: 10.0, extraction: null },
+      { name: "Novodvorskoe", type: "DWS", reserves: 6.8, extraction: null },
+      { name: "Obukhovskoe", type: "DWS/IND", reserves: 12.3, extraction: 0.712 },
+      { name: "Ruzaevskoe", type: "DWS", reserves: 6.3, extraction: null },
+      { name: "Tarangulskoe", type: "DWS", reserves: 13.0, extraction: 0.315 },
+      { name: "Chkalovskoe", type: "DWS", reserves: 3.8, extraction: null },
+      { name: "Kyzylzharskoe", type: "DWS", reserves: 16.4, extraction: null },
+      { name: "Zhamantauzskoe", type: "IND", reserves: 10.4, extraction: null },
+      { name: "Shapkar-Arasan", type: "MIN", reserves: 0.043, extraction: null },
+      { name: "Asanovskoe", type: "MIN", reserves: 0.768, extraction: null },
+      { name: "Zhenekolskoe", type: "MIN", reserves: 0.7, extraction: null },
+      { name: "Iverskoe", type: "MIN", reserves: 1.73, extraction: null },
+    ]
+  },
+  yuko: {
+    name: "South Kazakhstan Region",
+    population: "1,978.3 th. people",
+    resources: "11,438 th. m³/day",
+    deposits_count: 30,
+    problems: ["Chromium contamination (45 MAC)", "Shymkent industrial pollution", "Highest population density in Kazakhstan"],
+    pollution: ["Chromium 45 MAC", "Iron 20 MAC", "Nitrates", "Molybdenum, vanadium, fluorine"],
+    context: `South Kazakhstan Region is the most densely populated (16.98 people/km²). Fresh water constitutes 74% of resources. Main problem — Shymkent industrial district: MAC exceeded for 30-70 components. At Badam-Sayram deposit: chromium reaches 45 MAC, iron 20 MAC. At Mirgalimssay — lead 4.5 MAC. Syr Darya in this region has mineralization 0.7-1.5 g/L. Most cities are well-supplied with groundwater for drinking purposes.`,
+    deposits: [
+      { name: "Badam-Sayramskoe", type: "DWS", reserves: 346.0, extraction: 210.0 },
+      { name: "Tassay-Aksuskoe", type: "DWS", reserves: 805.2, extraction: null },
+      { name: "Arysskoe", type: "DWS", reserves: 34.4, extraction: 1.7 },
+      { name: "Ikansu-Ktayskoe", type: "DWS", reserves: 129.6, extraction: 41.7 },
+      { name: "Beresek-Kantagisnkoe", type: "DWS", reserves: 72.9, extraction: null },
+      { name: "Aleksandrovskoe", type: "DWS", reserves: 28.5, extraction: 2.0 },
+      { name: "Lengerskoe", type: "DWS", reserves: 4.3, extraction: null },
+      { name: "Karachikskoe", type: "DWS", reserves: 57.2, extraction: 10.6 },
+      { name: "Golodnostepskoe", type: "DWS", reserves: 76.5, extraction: 6.0 },
+      { name: "Abayskoe", type: "DWS", reserves: 51.8, extraction: 1.84 },
+      { name: "Nizhnetugayskoe", type: "DWS", reserves: 13.0, extraction: 3.4 },
+      { name: "Shardarinskoe", type: "DWS", reserves: 45.2, extraction: null },
+    ]
+  }
+};
+
+let currentRegion = null;
+let chatHistory = [];
+
+function loadRegion() {
+  const key = document.getElementById('regionSelect').value;
+  if (!key) {
+    document.getElementById('mainContent').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'block';
+    return;
+  }
+  currentRegion = REGIONS[key];
+  document.getElementById('mainContent').style.display = 'block';
+  document.getElementById('emptyState').style.display = 'none';
+  renderStats();
+  renderRegionInfo();
+  renderDeposits();
+  resetChat();
+}
+
+function renderStats() {
+  const r = currentRegion;
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stats-item">
+      <div class="stats-num">${r.deposits_count}</div>
+      <div class="stats-lbl">Deposits</div>
+    </div>
+    <div class="stats-item">
+      <div class="stats-num" style="font-size:12px">${r.resources}</div>
+      <div class="stats-lbl">Forecast resources</div>
+    </div>
+    <div class="stats-item">
+      <div class="stats-num" style="font-size:11px">${r.population}</div>
+      <div class="stats-lbl">Population</div>
+    </div>
+  `;
+}
+
+function renderRegionInfo() {
+  const r = currentRegion;
+  const problemTags = r.problems.map(p => `<span class="problem-tag">${p}</span>`).join('');
+  const pollutionTags = r.pollution.map(p => `<span class="problem-tag warn">${p}</span>`).join('');
+  document.getElementById('regionInfoCard').innerHTML = `
+    <div class="region-info-title">⚠️ Key Problems</div>
+    <div style="margin-bottom:8px">${problemTags}</div>
+    <div class="region-info-title" style="margin-top:10px">☣️ Contamination</div>
+    <div>${pollutionTags}</div>
+  `;
+}
+
+function renderDeposits() {
+  const deposits = currentRegion.deposits;
+  const grid = document.getElementById('depositGrid');
+  grid.innerHTML = deposits.map(d => {
+    const typeClass = d.type === 'MIN' ? 'mineral' : d.type.includes('IND') ? 'ptv' : '';
+    const typeBadgeClass = d.type === 'MIN' ? 'type-min' : d.type.includes('IND') ? 'type-ptv' : 'type-xpv';
+    const reserves = d.reserves !== null ? `${d.reserves} <span class="stat-unit">th. m³/day</span>` : '<span style="color:var(--text2)">n/a</span>';
+    const extraction = d.extraction !== null ? `${d.extraction} <span class="stat-unit">th. m³/day</span>` : '<span style="color:var(--text2)">n/e</span>';
+    return `
+      <div class="deposit-card ${typeClass}">
+        <div class="card-top">
+          <div class="deposit-name">${d.name}</div>
+          <span class="water-type ${typeBadgeClass}">${d.type}</span>
+        </div>
+        <div class="card-stats">
+          <div class="stat">
+            <div class="stat-label">📦 Reserves</div>
+            <div class="stat-value">${reserves}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">💧 Extraction</div>
+            <div class="stat-value">${extraction}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function showTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', (i === 0 && tab === 'deposits') || (i === 1 && tab === 'ai'));
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+}
+
+function resetChat() {
+  chatHistory = [];
+  document.getElementById('chatMessages').innerHTML = `
+    <div class="msg msg-ai">
+      I have data on groundwater for <strong>${currentRegion.name}</strong>. Ask me about water quality, deposits, contamination, or drilling potential.
+    </div>
+  `;
+}
+
+function askQuick(q) {
+  document.getElementById('chatInput').value = q;
+  sendMsg();
+}
+
+async function sendMsg() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg || !currentRegion) return;
+  input.value = '';
+  document.getElementById('sendBtn').disabled = true;
+
+  const messagesDiv = document.getElementById('chatMessages');
+  messagesDiv.innerHTML += `<div class="msg msg-user">${msg}</div>`;
+
+  const loadingId = 'loading_' + Date.now();
+  messagesDiv.innerHTML += `
+    <div class="msg msg-ai msg-loading" id="${loadingId}">
+      <div class="dot-flash"><span></span><span></span><span></span></div>
+    </div>
+  `;
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+  const systemPrompt = `You are a hydrogeology expert on Kazakhstan. You consult based on data from the book "Groundwater of Kazakhstan" (1999).
+
+REGION DATA: ${currentRegion.name}
+Population: ${currentRegion.population}
+Forecast resources: ${currentRegion.resources}
+Number of deposits: ${currentRegion.deposits_count}
+Main problems: ${currentRegion.problems.join(', ')}
+Contamination: ${currentRegion.pollution.join(', ')}
+Context: ${currentRegion.context}
+
+Answer briefly and concisely in English. Use regional data. If asked about drilling — consider contamination issues and water quality. Keep answers under 150 words.`;
+
+  chatHistory.push({ role: 'user', content: msg });
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        system: systemPrompt,
+        messages: chatHistory
+      })
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'Error getting response';
+    chatHistory.push({ role: 'assistant', content: reply });
+
+    document.getElementById(loadingId).outerHTML = `<div class="msg msg-ai">${reply}</div>`;
+  } catch(e) {
+    document.getElementById(loadingId).outerHTML = `<div class="msg msg-ai" style="color:var(--danger)">Connection error</div>`;
+  }
+
+  document.getElementById('sendBtn').disabled = false;
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+</script>
+</body>
+</html>
